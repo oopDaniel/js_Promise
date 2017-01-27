@@ -6,6 +6,7 @@ function Promise(fn) {
   let value       = null;
   let state       = PENDING;
   const deferreds = [];
+  const isPromise = (test) => test.toString() === '[object Promise]';
 
   this.toString = () => '[object Promise]';
 
@@ -25,6 +26,14 @@ function Promise(fn) {
   }
 
   function resolve(newValue) {
+
+    if (newValue && isPromise(newValue)) {
+      const then = newValue.then;
+      // Use parent promise's 'resolve' as the fullfillment callback
+      then.call(newValue, resolve);
+      return;
+    }
+
     value = newValue;
     state = FULLFILLED;
 
