@@ -16,20 +16,23 @@ function Promise(fn) {
     })
   }
 
+  this.catch = (onRejected) => this.then(null, onRejected);
+
   function handle(deferred) {
     if (state === PENDING) {
       deferreds.push(deferred);
       return;
     }
-    const cb = state === FULLFILLED
-      ? deferreds.onFullfilled
-      : deferreds.onRejected;
+
+    let cb = state === FULLFILLED
+      ? deferred.onFullfilled
+      : deferred.onRejected;
     let ret;
 
     if (cb === null) {
       cb = state === FULLFILLED
-        ? deferreds.resolve
-        : deferreds.reject;
+        ? deferred.resolve
+        : deferred.reject;
       cb(value);
       return;
     }
@@ -68,7 +71,7 @@ function Promise(fn) {
     });
   }
 
-  fn(resolve);
+  fn(resolve, reject);
 }
 
 function asap(fn) {
