@@ -10,9 +10,9 @@ function Promise(fn) {
 
   this.toString = () => '[object Promise]';
 
-  this.then = (onFullfilled = null) => {
-    return new Promise((resolve) => {
-      handle({ onFullfilled, resolve });
+  this.then = (onFullfilled = null, onRejected = null) => {
+    return new Promise((resolve, reject) => {
+      handle({ onFullfilled, onRejected, resolve, reject });
     })
   }
 
@@ -21,22 +21,48 @@ function Promise(fn) {
       deferreds.push(deferred);
       return;
     }
-    let ret = deferred.onFullfilled(value);
-    deferred.resolve(ret);
+    const cb = state === FULLFILLED
+      ? deferreds.onFullfilled
+      : deferreds.onRejected;
+    let ret;
+
+    if (cb === null) {
+      cb = state === FULLFILLED
+        ? deferreds.resolve
+        : deferreds.reject;
+      cb(value);
+      return;
+    }
+
+    try {
+      ret = cb(value);
+      deferred.resolve(ret);
+    } catch (e) {
+      deferred.reject(e);
+    }
+
   }
 
   function resolve(newValue) {
-
     if (newValue && isPromise(newValue)) {
       const then = newValue.then;
       // Use parent promise's 'resolve' as the fullfillment callback
-      then.call(newValue, resolve);
+      then.call(newValue, resolve, reject);
       return;
     }
 
     value = newValue;
     state = FULLFILLED;
+    complete();
+  }
 
+  function reject(reason) {
+    state = REJECTED;
+    value = reason;
+    complete();
+  }
+
+  function complete() {
     asap(() => {
       deferreds.forEach(deferred => handle(deferred));
     });
